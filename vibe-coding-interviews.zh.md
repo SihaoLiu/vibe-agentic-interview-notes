@@ -1,16 +1,27 @@
 # **Vibe Coding / Agentic Flow 面试题集**
 
-***注: 本题集不存在所谓标准答案, 所附”参考答案”仅为抛砖引玉。***
+**注: 本题集不存在所谓标准答案, 所附”参考答案”仅为抛砖引玉。**
 
-***本文档提供comment权限，如果有认为说的不准确/错误的地方，欢迎批评建议*** 
+**本文档里面的内容也在下面的Github仓库进行维护** 
+
+[**https://github.com/SihaoLiu/vibe-agentic-interview-note**](https://github.com/SihaoLiu/vibe-agentic-interview-notes)
+
+**如果你觉得本文档有帮助， 点Star就好，随意拷贝**
+
+**如果有认为说的不准确/错误的地方，欢迎Open Issue/PR，欢迎批评/建议**
+
+**该文档仅供参考，实际的面试情况可能和本文档相去甚远**
+
+**DoYouOwnResearch**
 
 适用对象: 
 
 - 每天使用 Claude Code、Codex 等 agentic CLI 工具的开发者. 
 
-Credit：
+作者：
 
-- Sihao Liu \<[sihao@cs.ucla.edu](mailto:sihao@cs.ucla.edu)\>， [https://github.com/SihaoLiu](https://github.com/SihaoLiu)
+- Sihao Liu \<[sihao@cs.ucla.edu](mailto:sihao@cs.ucla.edu)\>， [https://github.com/SihaoLiu](https://github.com/SihaoLiu)  
+- Bangyan Wang \<wangbangyan@gmail.com\>， [https://github.com/AcrossForest](https://github.com/AcrossForest)
 
 参考资料: 
 
@@ -201,15 +212,15 @@ Credit：
 
   * 每个文件 \< 200 行, 太长可用 @path/to/file.md 引用拆分.
 
-  * 不要写”项目背景介绍”, 要写”agent 必须遵守的硬规则”.
+  * 不要写”项目背景介绍”, 要写”agent 必须遵守”的硬规则.
 
-* **注意:**
+* **注意**
 
-  * 维护一份好的 CLAUDE.md 的关键在于, 它不应该记录那些”agent 能够在理解项目的过程中自然意识到的”信息. 它应该记录那些类似”项目老手习以为常, 但是新手要探索很久”的信息.
+  * 维护一份好的[CLAUDE.md](http://CLAUDE.md)的关键在于， 它不应该记录那些“Agent能够在理解项目的过程中自然意识到的”信息。 它应该记录那些类似“项目老手习以为常，但是新手要探索很久”的信息。
 
-  * 避免 CLAUDE.md 腐烂是第一原则. 一份信息腐烂的 CLAUDE.md 带来的问题, 远大于一份没什么信息的 CLAUDE.md —— 宁缺毋滥.
+  * 避免CLAUDE.md腐烂是第一原则， 一份信息腐烂的[CLAUDE.md](http://CLAUDE.md)带来的问题， 远大于一份没什么信息的[CLAUDE.md](http://CLAUDE.md) – 宁缺毋滥
 
-  * 它应该是一份”快捷指南和避坑指南”, 而不是”项目介绍”.
+  * 它应该是一份“快捷指南和避坑指南”， 而不是“项目介绍”
 
 ---
 
@@ -664,7 +675,7 @@ Credit：
 
 ---
 
-### **Q30. 思考题: agentic 工具最终会让”程序员”这个职业消失吗?**
+### **Q30. 思考题: Agentic 工具最终会让”程序员”这个职业消失吗?**
 
 **讨论方向 (没有正确答案):**
 
@@ -714,7 +725,7 @@ My two cents：我认为实际上 writing-plans 并不是一个好的设计， �
 
 ---
 
-### **Q33. 你会使用Claude Code的/init？为什么？**
+### **Q33. 你会使用Claude Code的 \`/init\` 吗？为什么？**
 
 A33: \`/init\` 的设计本意是在项目开始的时候，为用户提供一个Onboarding的素材，也就是[CLAUDE.md](http://CLAUDE.md). 这个本意是好的， 能够让短期的Claude Code sessions迅速理解当前项目的相关上下文。但是[CLAUDE.md](http://CLAUDE.md)在Claude Code生态中的地位具有极高的优先级， 它同时作为两个目的出现： 项目记忆（Factual Info）和项目规则（Rules）。
 
@@ -737,6 +748,155 @@ My two cents：我认为自动管理项目记忆的机制，事实上在做一�
 A34: 普通的程序我们都知道，标准输入/输出/错误在Unix下有三种fd，stdin, stdout, stderr. 如果把Agent看成是某种“程序”。 那么它的stdin自然是prompt，stdout就是整个过程中的执行轨迹的transcript。 如果考虑这样的标准程序模型， Agent的“错误”是什么？Agent的“标准错误stderr”，本质上是在初始prompt运行之后的“人类介入”记录。这也就是在设计低代码智能体平台的时候，为什么一定要支持截获“智能体被介入之后”执行轨迹（上文 Q31）.
 
 My two cents：如果候选人能够意识到截获人类介入对于在整体流程上，优化智能体执行的重要性，我觉得是一个优秀的insight。但是需要让ta说出一个“截获介入轨迹之后如何使用的例子”
+
+---
+
+### **Q35. Coding CLI 的上下文管理有哪些核心设计维度？**
+
+A35: 这是一道开放式的设计分类问题——要求候选人对已有的 Coding CLI 设计自行归纳维度，而非背诵某个产品的功能列表。
+
+不同 Coding CLI（Claude Code、Codex、Cursor 等）在上下文管理上的差异看起来五花八门，但可以沿着几个正交的维度去理解。以下是一种参考分类方式，将设计空间拆为**三个维度**：
+
+1. **上下文传递模型**（详见 Q36）："要做什么"和"做完后的结果"这两类信息如何在执行单元之间流动？
+   - 输入保真度：Lossless / Lossy
+   - 输出处置：Drop / Preserve / Archive
+
+2. **注入管理模型**（详见 Q37）：知识性文本（项目规则、能力描述等）如何进入上下文，由谁管理？
+   - 状态管理：Stateful / Stateless
+   - 触发条件：User-driven / Harness-driven / Model-driven
+
+3. **封装与分发**（详见 Q38）：能力从哪里来，怎么被发现？
+   - Convention-based / API-based
+
+这个设计空间不专属于任何一个产品——不同 Coding CLI 在这张地图上选了不同的位置，具体产品是坐标点。维度的划分方式不唯一，上述三维只是一种参考；关键是能系统性地组织思考，而不是逐个罗列功能。
+
+---
+
+### **Q36. 当给 AI 派发一个任务时，你需要提供"告诉它做什么"和接收"做得怎样"的途径。在这个问题上有多少设计选项？尝试设计一个分类方法，使得 Claude Code 中的 sub-agent、inline 执行、resume/SendMessage 都能在你的体系中找到对应位置。**
+
+A36: 一种参考分类方式是，将问题拆为两个独立的子问题——**输入怎么传**和**输出怎么收**。
+
+**输入保真度（子任务如何获取信息）：**
+
+- **Lossless（无损）**：子任务继承主会话的完整上下文快照。信息零损耗，对齐质量最高，但 token 成本翻倍。
+- **Lossy（有损）**：主会话把任务压缩成一段描述传递。节省 token，但丢失了"之前排除的方向""用户的隐性偏好"等难以显式表达的语境。
+
+**输出处置（子任务积累的上下文怎么办）：**
+
+- **Drop（丢弃）**：子任务上下文销毁，只回传摘要。主会话保持干净。
+- **Preserve（保留）**：子任务直接在主上下文中执行（inline），所有中间产物留在原地。信息最完整，但噪声累积。
+- **Archive（归档）**：上下文从当前窗口移除，但通过可寻址的句柄持久化存储，可以事后唤醒继续。关键特征是**可寻址**——单纯的日志保存不算 Archive。
+
+两者交叉成 2×3 矩阵：
+
+| | Drop | Preserve | Archive |
+| :---- | :---- | :---- | :---- |
+| **Lossless** | 无原生支持（可用 fork+取结果模拟） | Inline 执行、`@skill` | `--fork-session`、`/branch` |
+| **Lossy** | Sub-agent | `/compact` | `--resume`、Agent Team `SendMessage` |
+
+**所以为什么 Claude Code 同时有 sub-agent、fork、resume 三种机制？** 因为它们分别在矩阵中的不同坐标上：
+
+- **sub-agent (Lossy-Drop)**：标准"派出去、回来汇报"模型。隔离干净 + token 经济，但传入和传出都有信息损耗。
+- **fork (Lossless-Archive)**：在决策岔路口并行探索多个方向；也是实现"Lossless-Drop 子任务"的天然路径（继承完整上下文 + 噪声隔离）。
+- **resume (Lossy-Archive)**：子任务完成 90% 但需要根据反馈做最后调整时，恢复已有会话比重新派发新 sub-agent 更高效——旧会话保留了对任务的完整理解。
+
+从最保守的 Lossy-Drop 这个基础模型出发，还有**三个正交的扩展方向**：
+
+- **嵌套（Nesting）**：允许子任务再派子任务。解决任务规模问题。代价：树深不可控、调试困难、成本指数增长。Claude Code 明确禁止（最大深度=1，见 Q6）。
+- **可恢复（Resumable）**：子任务完成后不销毁，可被唤醒继续工作。类比协程的 `yield`/`send`。Claude Code 主会话级支持 `--resume`，但 sub-agent 级尚未实现，是社区呼声很高的特性。
+- **分叉（Fork）**：从某时间点复制完整上下文到独立会话。类比 Unix `fork()`。
+
+每多加一个扩展维度，系统复杂度上一阶。
+
+**My two cents**: Lossy 的信息损耗是**双向的**——传入端丢失"语境"，传出端丢失"过程"。损耗最严重的往往是最难显式表达的部分："之前排除的方向""用户的隐性偏好""做某个判断的逻辑链"。
+
+实践中，你把一个复杂任务派给 sub-agent，结果回来发现它走偏了——很多时候不是 sub-agent 笨，而是你的任务描述没法把"前 30 分钟讨论里的 nuance"都传过去。这是 Lossy-Drop 模型的本质限制，不是 prompt 工程能完全解决的。
+
+一个实用的诊断技巧：最新的 Claude Code 已经允许你查看 sub-agent 收到的完整 context。去看 sub-agent 收到的第一条 prompt——假设你是一个刚加入的新人，只看这段文字，你是否得到了完成任务所需的全部信息？通常你会发现几个关键信息被磨损掉了——sub-agent 往往是在一段暧昧的指示中开始工作的。
+
+---
+
+### **Q37. 你有一系列知识性或者规范文档希望让 AI 遵守或者知晓，你有多种方法来让这些文字被加载到上下文当中——从手动复制到让模型自动读取。这个完整的设计空间的光谱上你能想到多少种不同的机制？这些机制的优缺点是什么？尝试设计一个分类体系来涵盖它们。**
+
+A37: 以代码规范为例——你为团队写了一份规范，希望 AI 在写代码时一直遵守。一种参考分类方式是，将问题拆为两个独立的子维度。
+
+**子维度一：状态管理（Stateful vs Stateless）**
+
+设想两个常见问题：
+
+- **重复注入（1→2）**：你敲了 `/check-style`（一个自定义 slash command，效果等于把对应的 prompt 模板完整输入了一遍），注入规范。一会儿又敲一次——**无状态系统**会再注入一份完整规范，浪费 token。
+- **丢失恢复（0→1）**：规范文件已在上下文里，但 compaction 把它压成了摘要（"之前聊过代码规范"），细节丢了。从此 AI 不再知道你的具体规范。
+
+两个问题的根源是同一个：**模型没有可靠的"当前上下文里有什么"的自我认知**。
+
+**Stateful** 的解法是：harness 在模型外部维护一张注册表，记录"应该有什么"。重复触发时去重，compaction 后自动恢复。**Stateless** 则每次都重新注入全文，无去重无恢复。
+
+Claude Code 的 Command（已 deprecated）是 stateless 的，Skill 是 stateful 的——这正是 Skill 取代 Command 的核心原因：解决了 compact-safety 和去重问题（见 Q1）。
+
+**子维度二：触发条件（谁决定加载？）**
+
+- **User-driven**：用户显式调用（`/command`、手动 `@skill`）。最可预测，但用户必须记得。
+- **Harness-driven**：由 Coding CLI 程序性地、在特定软件事件下自动触发和加载。关键特征是**确定性和可复现**——相同的事件一定触发相同的注入，不依赖模型判断。
+- **Model-driven**：模型根据语义自主决策（Skill body 按需加载、MCP ToolSearch）。最灵活，但可能误判、可能遗忘。
+
+Harness-driven 的触发时机有多种，举例：
+
+- **会话启动时**（Always-on）：根目录 CLAUDE.md、Auto Memory——启动即加载，无条件。
+- **路径访问时**（Access-triggered）：path-scoped rules、子目录 CLAUDE.md——模型读到匹配路径的文件时自动注入。
+- **Turn 边界**：每个 turn 注入当前日期、working set 摘要（正在编辑的文件、最近提到的路径）等运行时元信息。
+- **工具执行后**：文件编辑工具执行后，harness 查询 LSP 服务器并将诊断结果注入 context，让模型在下一步推理前看到编译错误/警告。
+
+Model-driven 通常需要和 Harness-driven 配合使用——模型得先知道某个知识的存在，才知道自己在需要的时候能去加载。以 Skill 为例，Coding CLI 总是用 Harness-driven 的方式在启动时加载所有 Skill 的元数据（名称+描述），模型看到这些索引后，在判断当前任务需要时才主动加载完整正文。这就是**分级加载**——元数据由 harness 保证"模型知道这个能力存在"，正文由 model-driven 按需拉入以节省 token（见 Q12）。
+
+**交叉矩阵：**
+
+| | User-driven | Harness-driven | Model-driven |
+| :---- | :---- | :---- | :---- |
+| **Stateful** | 手动 `@skill` | 根 CLAUDE.md、Auto Memory、path-scoped rules、turn 元信息、LSP 诊断 | Skill body、MCP ToolSearch |
+| **Stateless** | `/command`（已 deprecated） | 反直觉，不应出现 | 手搓加载（"请阅读 X 文件"） |
+
+**Stateless 行只有左下角（User-driven + Stateless）在实践中存在过**——其余 Stateless 组合要么反直觉要么不可取。Claude Code 的扩展机制演进方向，就是从表格底部向顶部迁移。
+
+**手搓加载（degenerate mode）**：在 CLAUDE.md 写"启动后请阅读 X 文件，并递归阅读 X 中引用的其他文件"。完全依赖模型的指令遵循，没有 harness 支撑——第一次能工作，compaction 后要么重复读取（浪费 token），要么模型自以为读过了跳过（信息丢失）。把状态管理责任交给了一个没有持久状态的执行者。
+
+回到代码规范这个例子，不同场景适合不同的机制：
+
+- 项目级硬规则 → 根目录 CLAUDE.md（Stateful + Always-on）
+- 路径相关规则（如 `src/auth/*` 下的安全规则）→ path-scoped rule（Stateful + Access-triggered）
+- 可被多个项目复用的检查规程 → Skill（Stateful + 分级加载）
+
+---
+
+### **Q38. Skill 和 MCP 都是"能力扩展"，它们在分发方式上的本质区别是什么？**
+
+A38: Skill 和 MCP 解决的都是"如何把额外能力暴露给 AI"的问题，但分发机制完全不同——它们对应"如何打包和发现能力"这个独立维度的两个取值。
+
+**Convention-based（约定式）**：能力通过文件系统结构声明。系统扫描约定的目录路径，看到特定的目录名和文件名就知道该如何处理。路径本身携带语义。
+
+```
+.claude/skills/code-review/
+├── SKILL.md         ← 看到 SKILL.md 就知道这是一个 skill
+├── checklist.md     ← 附属资源，通过相对路径引用
+├── examples/
+└── scripts/
+```
+
+分发方式：git commit → git push → 团队成员 git pull，即刻生效。
+
+- **优点**：透明（`ls` 就能看到全部）、天然支持辅助资源（脚本、模板放同目录）、天然可版本控制、零运行时依赖。
+- **缺点**：传统上跨工具需要共识——你写的 `.claude/skills/` 其他工具未必认（不过这个壁垒正在降低，例如 Cursor 和 DeepSeek-TUI 已经开始兼容 `.claude/` 目录结构）。能力集合是静态的，运行时不能动态增减。
+
+Claude Code 的 Skill、Sub-agent、Rule、Plugin 全部是 convention-based。
+
+**API-based（接口式）**：能力藏在独立进程后，通过标准协议自描述。客户端连接后发送"列出你的能力"，服务端返回结构化的能力描述。客户端不需要知道服务端内部如何组织。
+
+分发方式：发布一个 MCP server，所有支持 MCP 的客户端都能用。
+
+- **优点**：封装性强（实现语言/内部结构对客户端透明）、跨平台（同一份服务所有客户端通用）、动态能力集合（服务可根据状态返回不同 tool 列表）。
+- **缺点**：不透明（用户看不到 server 内部实现，出问题时无法像 `ls` 一样直接检查）、有运行时依赖（需要启动和管理额外进程）、辅助资源无天然组织方式。
+
+API-based 还带来一个附带特性：**生命周期管理**。能力提供方是独立进程，连接/断开是自然的生命周期事件。例如，LSP MCP server 可以在进程存活期间缓存上一轮代码分析的结果和进度，避免每次调用都从头计算；数据库 MCP server 则需要维护一个持久的网络连接。这些场景天然需要一个保活的进程，是 convention-based 静态文件无法替代的。
+
 
 ## 
 

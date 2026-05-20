@@ -11,6 +11,7 @@ Target audience:
 Credit:
 
 - Sihao Liu \<[sihao@cs.ucla.edu](mailto:sihao@cs.ucla.edu)\>, [https://github.com/SihaoLiu](https://github.com/SihaoLiu)
+- Bangyan Wang \<wangbangyan@gmail.com\>, [https://github.com/AcrossForest](https://github.com/AcrossForest)
 
 References:
 
@@ -737,6 +738,155 @@ This essentially asks the model to perform a "non-aligned" action. Given CLAUDE.
 **A34:** Every ordinary program has three Unix file descriptors: stdin, stdout, stderr. If we treat an Agent as a kind of "program," then its stdin is naturally the prompt, and its stdout is the transcript of the entire execution trace. Under this standard-program model, what is the Agent's "error"? An Agent's "standard error stderr" is essentially the **record of human interventions** that occur after the initial prompt has started running. This is also why, when designing a low-code agent platform, you must support capturing the execution trace *after* the agent has been interrupted (see Q31).
 
 **My two cents:** If the candidate recognizes the importance of capturing human-intervention traces as a way to optimize the agent's execution end-to-end, that's an excellent insight. But you should get them to give a concrete example of "what they would do with the intervention trace after capturing it."
+
+---
+
+### **Q35. What are the core design dimensions of context management in Coding CLIs?**
+
+**A35:** This is an open-ended design-classification question — it asks the candidate to identify dimensions by examining existing Coding CLI designs, not to recite a product's feature list.
+
+The differences between Coding CLIs (Claude Code, Codex, Cursor, etc.) in how they manage context look bewildering at first glance, but they can be understood along a few orthogonal dimensions. One reference classification splits the design space into **three dimensions**:
+
+1. **Context transfer model** (see Q36): How does "what to do" and "the result of doing it" flow between execution units?
+   - Input fidelity: Lossless / Lossy
+   - Output disposition: Drop / Preserve / Archive
+
+2. **Injection management model** (see Q37): How does knowledge text (project rules, capability descriptions, etc.) enter the context, and who manages it?
+   - State management: Stateful / Stateless
+   - Trigger conditions: User-driven / Harness-driven / Model-driven
+
+3. **Packaging and distribution** (see Q38): Where do capabilities come from, and how are they discovered?
+   - Convention-based / API-based
+
+This design space is not exclusive to any one product — different Coding CLIs pick different positions on the same map; specific products are points on the map. The particular choice of dimensions is not unique; the three above are just one reference. What matters is the ability to organize thinking systematically, not to enumerate features one by one.
+
+---
+
+### **Q36. When dispatching a task to an AI, you need a way to "tell it what to do" and a way to receive "how it went." How many design options exist for this? Try to design a classification scheme where Claude Code's sub-agent, inline execution, and resume/SendMessage each find a place.**
+
+**A36:** One reference classification is to split the problem into two independent sub-questions — **how does the input get there** and **what happens to the output**.
+
+**Input fidelity (how does the sub-task acquire information):**
+
+- **Lossless**: The sub-task inherits a complete context snapshot of the main session. Zero information loss, best alignment quality, but token cost doubles.
+- **Lossy**: The main session compresses the task into a brief description. Saves tokens, but loses hard-to-articulate context like "directions already ruled out" and "the user's implicit preferences."
+
+**Output disposition (what happens to the context the sub-task accumulated):**
+
+- **Drop**: The sub-task's context is destroyed; only a summary is returned. The main session stays clean.
+- **Preserve**: The sub-task executes directly in the main context (inline); all intermediate output stays in place. Maximum information, but accumulated noise.
+- **Archive**: The context is removed from the current window but persisted via an addressable handle, ready to be re-awakened. The defining trait is being **addressable** — simply saving logs does not count as Archive.
+
+Crossing the two yields a 2×3 matrix:
+
+| | Drop | Preserve | Archive |
+| :---- | :---- | :---- | :---- |
+| **Lossless** | No native support (simulate via fork + take-only-result) | Inline execution, `@skill` | `--fork-session`, `/branch` |
+| **Lossy** | Sub-agent | `/compact` | `--resume`, Agent Team `SendMessage` |
+
+**So why does Claude Code have sub-agent, fork, and resume all at once?** Because they sit at different coordinates in the matrix and each solves a different problem:
+
+- **sub-agent (Lossy-Drop)**: The standard "dispatch and report back" model. Clean isolation + token economy, but both input and output have information loss.
+- **fork (Lossless-Archive)**: For exploring multiple directions in parallel at a decision fork; also the natural way to implement a "Lossless-Drop sub-task" (inherit full context + isolated noise).
+- **resume (Lossy-Archive)**: When a sub-task has finished 90% of the work but needs a final adjustment based on feedback, restoring an existing session is more efficient than dispatching a new sub-agent — the old session retains complete understanding of the task.
+
+Starting from the most conservative Lossy-Drop as the base model, there are also **three orthogonal extension directions**:
+
+- **Nesting**: Allow sub-tasks to dispatch their own sub-tasks. Solves the task-scale problem. Costs: uncontrollable tree depth, debugging difficulty, exponential cost growth. Claude Code explicitly forbids it (max depth = 1; see Q6).
+- **Resumable**: Don't destroy a sub-task after completion; allow it to be re-awakened and continue. Analogous to a coroutine's `yield` / `send`. Claude Code supports `--resume` at the main-session level, but sub-agent-level resumability is not yet implemented — a feature with strong community demand.
+- **Fork**: Copy the full context to an independent session at some point in time. Analogous to Unix `fork()`.
+
+Each added extension dimension adds one order of system complexity.
+
+**My two cents:** Lossy losses are **bidirectional** — the input side loses "context" and the output side loses "process." The most severe losses are usually in the parts that are hardest to articulate: "directions already ruled out," "the user's implicit preferences," "the chain of reasoning behind a judgment."
+
+In practice, when you dispatch a complex task to a sub-agent and it comes back having gone off-track, it's often not that the sub-agent is dumb — it's that your task description couldn't carry "the nuances from the previous 30 minutes of discussion." This is an essential limitation of the Lossy-Drop model, not something prompt engineering can fully solve.
+
+A practical diagnostic: the latest Claude Code lets you inspect a sub-agent's full context. Go look at the first prompt the sub-agent received — imagine you're a new hire reading only that text. Do you have everything you need to complete the task? Usually you'll find several key pieces of information have been worn away — the sub-agent is often starting work from an ambiguous brief.
+
+---
+
+### **Q37. You have a set of knowledge or style-guide documents you want the AI to follow or be aware of. There are many ways to get that text loaded into the context — from manual copy-paste to having the model read it automatically. How many distinct mechanisms can you think of across this full design spectrum? What are the trade-offs of each? Try to design a classification scheme that covers them.**
+
+**A37:** Take a code style guide as an example — you wrote one for your team and want the AI to always follow it. One reference classification splits the problem into two independent sub-dimensions.
+
+**Sub-dimension 1: State management (Stateful vs Stateless)**
+
+Imagine two common problems:
+
+- **Duplicate injection (1→2)**: You type `/check-style` (a custom slash command — effectively the same as typing the full prompt template into the conversation), and the system injects the style guide. A little later you type it again — a **stateless** system would inject another copy, wasting tokens.
+- **Loss and recovery (0→1)**: The style guide is already in context, but compaction compresses it into a summary ("we talked about code style"), and the details are gone. From this moment on, the AI no longer knows your specific style requirements.
+
+Both problems have the same root cause: **the model has no reliable self-awareness of "what is currently in my context."**
+
+The **Stateful** solution: the harness maintains an external registry of "what should be there." It deduplicates on repeated triggers and auto-recovers after compaction. **Stateless** re-injects the full text on every trigger, with no deduplication and no recovery.
+
+In Claude Code, Command (deprecated) is stateless; Skill is stateful — which is exactly the core reason Skill replaced Command: it solved compact-safety and deduplication (see Q1).
+
+**Sub-dimension 2: Trigger conditions (who decides to load?)**
+
+- **User-driven**: The user explicitly invokes (`/command`, manual `@skill`). Most predictable, but the user must remember.
+- **Harness-driven**: Programmatically triggered by the Coding CLI upon specific software events. The key trait is **deterministic and reproducible** — the same event always triggers the same injection, with no model judgment involved.
+- **Model-driven**: The model decides autonomously based on semantics (Skill body lazy-load, MCP ToolSearch). Most flexible, but can misjudge and can forget.
+
+Harness-driven triggers come in many forms, for example:
+
+- **Session startup** (Always-on): Root CLAUDE.md, Auto Memory — loaded unconditionally at startup.
+- **Path access** (Access-triggered): path-scoped rules, nested CLAUDE.md — auto-injected when the model reads a file under a matching path.
+- **Turn boundary**: Each turn gets runtime metadata injected — current date, working-set summary (files being edited, recently mentioned paths).
+- **Post-tool-execution**: After a file-editing tool runs, the harness queries the LSP server and injects diagnostics into context so the model sees compile errors/warnings before its next reasoning step.
+
+Model-driven usually needs to work together with Harness-driven — the model must first know that a piece of knowledge exists before it can decide to load it when needed. Take Skills as an example: the Coding CLI always uses Harness-driven loading to inject all Skill metadata (name + description) at startup; the model sees this index and only actively loads the full body when it judges the current task requires it. This is **tiered loading** — metadata is guaranteed by the harness so "the model knows the capability exists"; the body is pulled in on demand by the model to save tokens (see Q12).
+
+**Cross matrix:**
+
+| | User-driven | Harness-driven | Model-driven |
+| :---- | :---- | :---- | :---- |
+| **Stateful** | Manual `@skill` | Root CLAUDE.md, Auto Memory, path-scoped rules, turn metadata, LSP diagnostics | Skill body, MCP ToolSearch |
+| **Stateless** | `/command` (deprecated) | Counter-intuitive, shouldn't appear | Hand-rolled loading ("please read file X") |
+
+**Only the bottom-left of the Stateless row (User-driven + Stateless) has existed in practice** — the rest of the Stateless combinations are either counter-intuitive or not viable. Claude Code's extension-mechanism evolution moves from the bottom of the table toward the top.
+
+**Hand-rolled loading (degenerate mode)**: Writing "after startup, please read file X, and recursively read other files X references" in CLAUDE.md. Fully relies on the model's instruction-following with no harness support — works the first time, but after compaction it either re-reads (wasting tokens) or the model thinks "I've read it" and skips (loses information). It hands state-management responsibility to an executor that has no persistent state.
+
+Back to the code style guide example, different scenarios call for different mechanisms:
+
+- Project-level hard rules → root CLAUDE.md (Stateful + Always-on)
+- Path-specific rules (e.g., security rules under `src/auth/*`) → path-scoped rule (Stateful + Access-triggered)
+- Multi-project reusable check procedures → Skill (Stateful + tiered loading)
+
+---
+
+### **Q38. Skill and MCP are both "capability extensions." What's the fundamental difference in how they are distributed?**
+
+**A38:** Skill and MCP both solve "how to expose additional capability to the AI," but their distribution mechanisms are completely different — they correspond to the two values of the independent dimension of "how capabilities are packaged and discovered."
+
+**Convention-based**: Capabilities are declared via file-system structure. The system scans agreed-upon directory paths; specific directory names and file names tell it how to handle them. The path itself carries semantics.
+
+```
+.claude/skills/code-review/
+├── SKILL.md         ← seeing SKILL.md tells the system this is a skill
+├── checklist.md     ← auxiliary resource, referenced by relative path
+├── examples/
+└── scripts/
+```
+
+Distribution: git commit → git push → team members git pull, effective immediately.
+
+- **Pros**: Transparent (`ls` shows everything), natural support for auxiliary resources (scripts and templates in the same directory), natural git versioning, zero runtime dependency.
+- **Cons**: Traditionally requires cross-tool consensus — your `.claude/skills/` may not be recognized by other tools (though this barrier is shrinking: Cursor and DeepSeek-TUI, for example, now recognize `.claude/` directory structures). The capability set is static; it can't be dynamically added or removed at runtime.
+
+Claude Code's Skill, Sub-agent, Rule, and Plugin are all convention-based.
+
+**API-based**: Capabilities sit behind an independent process and self-describe via a standard protocol. The client connects and sends "list your capabilities"; the server returns structured capability descriptions. The client doesn't need to know how the server is internally organized.
+
+Distribution: publish one MCP server; every MCP-aware client can use it.
+
+- **Pros**: Strong encapsulation (implementation language and internal structure are opaque to the client), cross-platform (one service usable by every client), dynamic capability set (the service can return different tool lists based on state).
+- **Cons**: Opaque (users cannot see inside the server; when things go wrong, you can't just `ls` to inspect), runtime dependency (needs to launch and manage an extra process), no natural place for auxiliary resources.
+
+API-based also brings an incidental feature: **lifecycle management**. Since capability providers are independent processes, connect/disconnect events are natural lifecycle markers. For example, an LSP MCP server can cache results and progress from the previous round of code analysis, avoiding redundant recomputation on every call; a database MCP server needs to maintain a persistent network connection. These scenarios inherently require a long-lived process — something convention-based static files cannot replace.
+
 
 ##
 
